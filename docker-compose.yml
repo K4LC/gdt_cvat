@@ -1,0 +1,9 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "${HOST_PORT:-8060}:${HOST_PORT:-8060}"
+    volumes:
+      - ./frontend:/frontend
+      - ./.env:/frontend/.env
+      - /frontend/node_modules
