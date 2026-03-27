@@ -1,6 +1,8 @@
 services:
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "${HOST_PORT:-8060}:${HOST_PORT:-8060}"
     volumes:
