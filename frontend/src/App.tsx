@@ -1,27 +1,28 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import './App.css'
-import TextInput from "./TextInput.tsx"
-import FolderInput from './FolderInput.tsx';
+import DeployGeneratePage from "./DeployGeneratePage.tsx";
+import TrainPage from "./TrainPage.tsx";
 
 function App() {
 
   return (
-    <>
-      <div className='header'></div>
+    <BrowserRouter>
+      <div className='header'>GDT CVAT</div>
       <div className='body'>
         <div className='sidebar'>
-          <p>デプロイ</p>
-          <p>学習</p>
+          <p>デプロイジェネレート</p>
+          <p>YOLO学習</p>
         </div>
-        <div className='main'>
-          <TextInput label='モデル名' placeholder='model.onnx'/>
-          <TextInput label='作成者名' placeholder='Ishikubo'/>
-          <FolderInput label='svgファイル' extensions={["svg"]} />
-          <FolderInput label='モデル' extensions={["onnx"]} />
-          <button onClick={() => console.log("button")}>Generate</button>
+        <div className="main">
+          <Routes>
+            <Route path="/" element={<Navigate to="/deploy" />} />
+            <Route path="/deploy" element={<DeployGeneratePage />} />
+            <Route path="/train" element={<TrainPage />} />
+          </Routes>
         </div>
       </div>
       
-    </>
+    </BrowserRouter>
   )
 }
 
