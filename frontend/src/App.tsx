@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import './App.css'
+import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom"
 import DeployGeneratePage from "./DeployGeneratePage.tsx";
 import TrainPage from "./TrainPage.tsx";
 
@@ -10,8 +10,12 @@ function App() {
       <div className='header'>GDT CVAT</div>
       <div className='body'>
         <div className='sidebar'>
-          <p>デプロイジェネレート</p>
-          <p>YOLO学習</p>
+          <p>
+            <Link to="/deploy">デプロイフォルダ作成</Link>
+          </p>
+          <p>
+            <Link to="/train">YOLO学習</Link>
+          </p>
         </div>
         <div className="main">
           <Routes>
