@@ -9,3 +9,28 @@ services:
       - ./frontend:/frontend
       - ./.env:/frontend/.env
       - /frontend/node_modules
+  
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "${VITE_API_PORT:-8050}:${VITE_API_PORT:-8050}"
+    volumes:
+      - ./backend:/backend
+      - ./.env:/backend/.env
+      - shared_gen:/shared_gen
+  
+  worker_generate:
+    build: 
+      context: ./worker_generate
+      dockerfile: Dockerfile
+    ports:
+      - "${WG_PORT:-8040}:${WG_PORT:-8040}"
+    volumes:
+      - ./worker_generate:/worker_generate
+      - ./.env:/worker_generate/.env
+      - shared_gen:/shared_gen
+
+volumes:
+  shared_gen:
