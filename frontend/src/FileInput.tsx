@@ -1,24 +1,29 @@
 type Props = {
   label: string;
-  accept?: string[];
+  accept: string;
   onChange: (file: File | null) => void;
-};
+}
 
 function FileInput({ label, accept, onChange }: Props) {
 
   return (
     <div>
-      <label>{label}</label>
-      <input
-        type="file"
-        onChange={(e) => {
-          const file = e.target.files?.[0] || null;
-          onChange(file);
-        }}
-        accept={accept?.map((ext) => "." + ext).join(",")}
-      />
+      <label>
+        {label}:
+        <input
+          type="file"
+          accept={accept}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            const files = e.currentTarget.files;
+            if (!files || files?.length === 0) return;
+
+            const file = files[0];
+
+          }}
+        />
+      </label>
     </div>
-  );
+  )
 }
 
 export default FileInput;
