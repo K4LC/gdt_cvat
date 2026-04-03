@@ -5,9 +5,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${HOST_PORT:-8060}:${HOST_PORT:-8060}"
+    env_file:
+      - .env
     volumes:
       - ./frontend:/frontend
-      - ./.env:/frontend/.env
       - /frontend/node_modules
   
   backend:
@@ -16,9 +17,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${VITE_API_PORT:-8050}:${VITE_API_PORT:-8050}"
+    env_file:
+      - .env
     volumes:
-      - ./backend:/backend
-      - ./.env:/backend/.env
       - shared_gen:/shared_gen
   
   worker_generate:
@@ -27,9 +28,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${WG_PORT:-8040}:${WG_PORT:-8040}"
+    env_file:
+      - .env
     volumes:
       - ./worker_generate:/worker_generate
-      - ./.env:/worker_generate/.env
       - shared_gen:/shared_gen
 
 volumes:
