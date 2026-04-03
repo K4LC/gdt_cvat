@@ -1,6 +1,5 @@
 services:
   frontend:
-    container_name: frontend
     build: 
       context: ./frontend
       dockerfile: Dockerfile
@@ -24,6 +23,8 @@ services:
       - .env
     volumes:
       - shared_gen:/shared_gen
+    depends_on:
+      - queue_db
   
   queue_db:
     image: redis:7
@@ -41,8 +42,9 @@ services:
     env_file:
       - .env
     volumes:
-      - ./worker_generate:/worker_generate
       - shared_gen:/shared_gen
+    depends_on:
+      - queue_db
 
 volumes:
   shared_gen:
