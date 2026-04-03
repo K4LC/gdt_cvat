@@ -50,7 +50,7 @@ async def generate(
 
     r = redis.Redis(host="queue_db", port=6379, db=0)
 
-    task_data = {
+    generate_data = {
         "task_id": task_id,
         "modelName": modelName,
         "author": author,
@@ -58,7 +58,7 @@ async def generate(
         "pt_path": pt_path
     }
 
-    r.rpush("task_queue", json.dumps(task_data))
+    r.rpush("generate_queue", json.dumps(generate_data))
     print("Pushed to queue")
 
     return {"message": "ok"}

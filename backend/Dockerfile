@@ -6,4 +6,4 @@ COPY . .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${API_PORT:-8050} --reload"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${VITE_API_PORT:-8060} --reload"]

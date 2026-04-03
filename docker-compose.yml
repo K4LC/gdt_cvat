@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: frontend
     ports:
-      - "${HOST_PORT:-8060}:${HOST_PORT:-8060}"
+      - "${HOST_PORT:-5173}:${HOST_PORT:-5173}"
     env_file:
       - .env
     volumes:
@@ -18,7 +18,7 @@ services:
       dockerfile: Dockerfile
     container_name: backend
     ports:
-      - "${VITE_API_PORT:-8050}:${VITE_API_PORT:-8050}"
+      - "${VITE_API_PORT:-8060}:${VITE_API_PORT:-8060}"
     env_file:
       - .env
     volumes:
@@ -37,8 +37,6 @@ services:
       context: ./worker_generate
       dockerfile: Dockerfile
     container_name: worker_generate
-    ports:
-      - "${WG_PORT:-8040}:${WG_PORT:-8040}"
     env_file:
       - .env
     volumes:

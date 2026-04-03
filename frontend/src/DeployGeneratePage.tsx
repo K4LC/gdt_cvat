@@ -38,7 +38,7 @@ function DeployGeneratePage() {
 
     try {
       const res = await axios.post(
-        `http://localhost:${import.meta.env.VITE_API_PORT}/generate`,
+        `${import.meta.env.VITE_API_URL}/generate`,
         formData,
         {
           headers: {
