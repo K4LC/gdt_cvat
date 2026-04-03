@@ -3,6 +3,7 @@ services:
     build: 
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: frontend
     ports:
       - "${HOST_PORT:-8060}:${HOST_PORT:-8060}"
     env_file:
@@ -15,6 +16,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: backend
     ports:
       - "${VITE_API_PORT:-8050}:${VITE_API_PORT:-8050}"
     env_file:
@@ -22,10 +24,17 @@ services:
     volumes:
       - shared_gen:/shared_gen
   
+  queue_db:
+    image: redis:7
+    container_name: queue_db
+    ports:
+      - "6379:6379"
+  
   worker_generate:
     build: 
       context: ./worker_generate
       dockerfile: Dockerfile
+    container_name: worker_generate
     ports:
       - "${WG_PORT:-8040}:${WG_PORT:-8040}"
     env_file:

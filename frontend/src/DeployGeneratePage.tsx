@@ -5,7 +5,7 @@ function DeployGeneratePage() {
   const [modelName, setModelName] = useState<string>("");
   const [author, setAuthor] = useState<string>("");
   const [svgFile, setSvgFile] = useState<File | null>(null);
-  const [onnxFile, setOnnxFile] = useState<File | null>(null);
+  const [ptFile, setPtFile] = useState<File | null>(null);
 
   const validateFile = (file: File | null, ext: string) => {
     if (!file) {
@@ -23,18 +23,18 @@ function DeployGeneratePage() {
   };
 
   const handleGenerate = async () => {
-    if (modelName == "" || author == "" || !svgFile || !onnxFile) {
+    if (modelName == "" || author == "" || !svgFile || !ptFile) {
       alert("すべて埋めてください");
       return;
     }
     if (!validateFile(svgFile, "svg")) return;
-    if (!validateFile(onnxFile, "onnx")) return;
+    if (!validateFile(ptFile, "pt")) return;
 
     const formData = new FormData();
     formData.append("modelName", modelName);
     formData.append("author", author);
     formData.append("svg", svgFile);
-    formData.append("onnx", onnxFile);
+    formData.append("pt", ptFile);
 
     try {
       const res = await axios.post(
@@ -70,7 +70,7 @@ function DeployGeneratePage() {
       </div>
       <div>
       <label>モデルファイル</label>
-      <input type="file" accept=".onnx" onChange={(e) => setOnnxFile(e.target.files?.[0] || null)}/>
+      <input type="file" accept=".pt" onChange={(e) => setPtFile(e.target.files?.[0] || null)}/>
       </div>
 
       <button onClick={handleGenerate}>Generate</button>
