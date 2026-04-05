@@ -34,7 +34,7 @@ async def generate(
     print("create task_id")
     BASE_DIR = "/shared_gen"
 
-    task_dir = os.path.join(BASE_DIR, task_id)
+    task_dir = os.path.join(BASE_DIR, f"generate_{task_id}")
     os.makedirs(task_dir, exist_ok=True)
 
     svg_path = os.path.join(task_dir, svg.filename)
@@ -61,4 +61,4 @@ async def generate(
     r.rpush("generate_queue", json.dumps(generate_data))
     print("Pushed to queue")
 
-    return {"message": "ok"}
+    return {"generate_id": task_id}
