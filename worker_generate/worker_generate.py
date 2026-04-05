@@ -69,6 +69,6 @@ while True:
     # Jinja2でテンプレートからファイル作成
 
     # backendからの共有用フォルダ削除
-    # shutil.rmtree(os.path.join(BASE_DIR, f'generate_{generate_data["task_id"]}'))
+    shutil.rmtree(BASE_PATH)
 
     # backendに終了通知
