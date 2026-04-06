@@ -17,7 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/generate")
+@app.post("/api/generate")
 async def generate(
     modelName: str = Form(...),
     author: str = Form(...),

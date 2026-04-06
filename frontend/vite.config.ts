@@ -8,7 +8,13 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       host: "0.0.0.0",
-      port: Number(env.HOST_PORT) || 8060,
-    }
+      port: Number(env.HOST_PORT) || 5173,
+      proxy: {
+        "/api": {
+          target: `http://backend:${Number(env.VITE_API_PORT) || 8060}`,
+          changeOrigin: true,
+        },
+      },
+    },
   }
 })

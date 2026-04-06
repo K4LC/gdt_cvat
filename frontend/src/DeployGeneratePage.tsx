@@ -38,7 +38,7 @@ function DeployGeneratePage() {
 
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/generate`,
+        "/api/generate",
         formData,
         {
           headers: {
