@@ -4,17 +4,17 @@ metadata:
   annotations:
     name: {{modelName}}
     type: detector
-      spec: |
-        [
-          {
-            "name": "person",
-            "type": "skeleton",
-            "svg": "{{svgInfo}}",
-            "sublabels": [
-              {{svgLabelNames}}
-            ]
-          }
-        ]
+    spec: |
+      [
+        {
+          "name": "person",
+          "type": "skeleton",
+          "svg": "{{svgInfo}}",
+          "sublabels": [
+            {{svgLabelNames}}
+          ]
+        }
+      ]
 spec:
   description: {{modelName}} created by {{author}} at {{timestamp}}
   runtime: 'python:3.10'

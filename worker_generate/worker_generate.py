@@ -22,6 +22,28 @@ def generate_from_template(template_path, output_path, params):
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(output)
 
+def parse_line(line_root):
+    x1 = line_root.attrib["x1"]
+    y1 = line_root.attrib["y1"]
+    x2 = line_root.attrib["x2"]
+    y2 = line_root.attrib["y2"]
+    data_type = line_root.attrib["data-type"]
+    data_node_from = line_root.attrib["data-node-from"]
+    data_node_to = line_root.attrib["data-node-to"]
+
+    return f'<line x1=\\"{x1}\\" y1=\\"{y1}\\" x2=\\"{x2}\\" y2=\\"{y2}\\" data-type=\\"{data_type}\\" data-node-from=\\"{data_node_from}\\" data-node-to=\\"{data_node_to}\\"></line>'
+
+def parse_circle(circle_root, data_label_name):
+    r = circle_root.attrib["r"]
+    cx = circle_root.attrib["cx"]
+    cy = circle_root.attrib["cy"]
+    data_type = circle_root.attrib["data-type"]
+    data_element_id = circle_root.attrib["data-element-id"]
+    data_node_id = circle_root.attrib["data-node-id"]
+    
+    return f'<circle r=\\"{r}\\" cx=\\"{cx}\\" cy=\\"{cy}\\" data-type=\\"{data_type}\\" data-element-id=\\"{data_element_id}\\" data-node-id=\\"{data_node_id}\\" data-label-name=\\"{data_label_name}\\"></circle>'
+
+
 def parse_svg(svg_path):
     with open(svg_path, "r") as f:
         svg_text = f.read()
@@ -30,25 +52,27 @@ def parse_svg(svg_path):
 
     lines = root.findall(".//line")
     circles = root.findall(".//circle")
-
     desc = root.find("desc")
-    data = json.loads(desc.text)
-    labels = [v["name"] for v in data.values()]
+    labelNameData = json.loads(desc.text)
+    labels = [v["name"] for v in labelNameData.values()]
+    colors = [c.attrib["fill"] for c in circles]
 
     output_svg = ""
-    for elem in lines + circles:
-        xml_str = ET.tostring(elem, encoding="unicode", short_empty_elements=False)
-        output_svg += xml_str.replace('"', '\\"') + "\\n"
+    for line in lines:
+        output_svg += (parse_line(line) + "\\n")
 
-    output_svg = output_svg.rstrip("\\n")
+    for circle, label in zip(circles, labels):
+        output_svg += (parse_circle(circle, label) + "\\n")
 
-    output_label = ""
-    for i, label in enumerate(labels):
-        output_label += f'{{ "id": {i}, "name": "{label}", "type": "points" }},'
+    output_svg = output_svg[:-2]
 
-    output_label = output_label.rstrip(",")
+    output_sublabel = ""
+    for i, (label, color) in enumerate(zip(labels, colors)):
+        output_sublabel += '{ "id": _id, "name": "_name", "color": "_color", "type": "points" },'.replace("_id", str(i)).replace("_name", label).replace("_color", color)
 
-    return output_svg, output_label
+    output_sublabel = output_sublabel[:-1]
+
+    return output_svg, output_sublabel
 
 while True:
     print("waiting...")

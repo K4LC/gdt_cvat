@@ -52,8 +52,8 @@ async def generate(
 
     generate_data = {
         "task_id": task_id,
-        "modelName": modelName,
-        "author": author,
+        "modelName": modelName.lower(),
+        "author": author.lower(),
         "svg_path": svg_path,
         "pt_path": pt_path
     }
