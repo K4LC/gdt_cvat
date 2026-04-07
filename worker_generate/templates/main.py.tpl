@@ -11,7 +11,7 @@ def init_context(context):
     with open("/opt/nuclio/function.yaml", "rb") as function_file:
         functionconfig = yaml.safe_load(function_file)
     
-    labels_spec = functionconfig["metadata"]["annotation"]["spec"]
+    labels_spec = functionconfig["metadata"]["annotations"]["spec"]
     labels = json.loads(labels_spec)
 
     model = ModelHandler(labels)

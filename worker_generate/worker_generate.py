@@ -3,7 +3,8 @@ import os
 import shutil
 import json
 import datetime
-import time
+import re
+import xml.etree.ElementTree as ET
 from zoneinfo import ZoneInfo
 from jinja2 import Template
 from ultralytics import YOLO
@@ -21,12 +22,33 @@ def generate_from_template(template_path, output_path, params):
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(output)
 
-def process_task(task_data):
-    print("start:", task_data["task_id"])
+def parse_svg(svg_path):
+    with open(svg_path, "r") as f:
+        svg_text = f.read()
 
-    time.sleep(2)
+    root = ET.fromstring(svg_text)
 
-    print("end:", task_data["task_id"])
+    lines = root.findall(".//line")
+    circles = root.findall(".//circle")
+
+    desc = root.find("desc")
+    data = json.loads(desc.text)
+    labels = [v["name"] for v in data.values()]
+
+    output_svg = ""
+    for elem in lines + circles:
+        xml_str = ET.tostring(elem, encoding="unicode", short_empty_elements=False)
+        output_svg += xml_str.replace('"', '\\"') + "\\n"
+
+    output_svg = output_svg.rstrip("\\n")
+
+    output_label = ""
+    for i, label in enumerate(labels):
+        output_label += f'{{ "id": {i}, "name": "{label}", "type": "points" }},'
+
+    output_label = output_label.rstrip(",")
+
+    return output_svg, output_label
 
 while True:
     print("waiting...")
@@ -65,8 +87,30 @@ while True:
     shutil.copy(src_onnx, dst_onnx)
 
     # svgデータ処理
+    svgInfo, svgLabelNames = parse_svg(svg_path)
+    print(svgInfo, svgLabelNames)
 
     # Jinja2でテンプレートからファイル作成
+    function_dict = {
+        "modelName": modelName,
+        "author": author,
+        "timestamp": timestamp,
+        "svgInfo": svgInfo,
+        "svgLabelNames": svgLabelNames,
+        }
+    main_dict = {
+        "modelName": modelName,
+        "author": author,
+        "timestamp": timestamp,
+        }
+    model_handler_dict = {
+        "model_onnx": f"{pt_filename.replace('.pt', '.onnx')}",
+        }
+
+    generate_from_template(os.path.join("templates", "function-gpu.yaml.tpl"), os.path.join(nuclio_dir, "function-gpu.yaml"), function_dict)
+    generate_from_template(os.path.join("templates", "function.yaml.tpl"), os.path.join(nuclio_dir, "function.yaml"), function_dict)
+    generate_from_template(os.path.join("templates", "main.py.tpl"), os.path.join(nuclio_dir, "main.py"), main_dict)
+    generate_from_template(os.path.join("templates", "model_handler.py.tpl"), os.path.join(nuclio_dir, "model_handler.py"), model_handler_dict)
 
     # backendからの共有用フォルダ削除
     shutil.rmtree(BASE_PATH)

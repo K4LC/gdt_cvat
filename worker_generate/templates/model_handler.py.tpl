@@ -13,26 +13,26 @@ class ModelHandler:
         self.labels = labels
     
     def load_network(self, model):
-        devices = ort.get_device()
+        device = ort.get_device()
         cuda = True if device == "GPU" else False
         try:
-            providers = (["CUDAExecutionProvider", "CPUExecutionProvider"] if cuda else ["CPUExecutionProvider])
-                so = ort.SessionOptions()
-                so.log_severity_level = 3
+            providers = (["CUDAExecutionProvider", "CPUExecutionProvider"] if cuda else ["CPUExecutionProvider"])
+            so = ort.SessionOptions()
+            so.log_severity_level = 3
 
-                self.model = ort.InferenceSession(
-                    model, providers=providers,
-                    sess_options=so
-                )
-                self.output_details = [i.name for i in self.model.get_outputs()]
-                self.input_details = [i.name for i in self.model.get_inputs()]
+            self.model = ort.InferenceSession(
+                model, providers=providers,
+                sess_options=so
+            )
+            self.output_details = [i.name for i in self.model.get_outputs()]
+            self.input_details = [i.name for i in self.model.get_inputs()]
         except Exception as e:
             raise Exception(f"Cannot load model {model}: {e}")
     
     def letterbox(
         self,
         im,
-        new_shape(640, 640),
+        new_shape=(640, 640),
         color=(114, 114, 114),
         auto=True,
         scaleup=True,
@@ -57,7 +57,7 @@ class ModelHandler:
 
         if shape[::-1] != new_unpad:
             im = cv2.resize(im, new_unpad, interpolation=cv2.INTER_LINEAR)
-        top, botom = int(round(dh - 0.1)), int(round(dh + 0.1))
+        top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
         left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
         im = cv2.copyMakeBorder(
             im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color
