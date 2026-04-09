@@ -105,7 +105,7 @@ while True:
 
     # .ptから.onnxにエクスポート
     model = YOLO(pt_path)
-    model.export(format="onnx", opset=16)
+    model.export(format="onnx")
     src_onnx = pt_path.replace(".pt", ".onnx")
     dst_onnx = f"{nuclio_dir}/{pt_filename.replace('.pt', '.onnx')}"
     shutil.copy(src_onnx, dst_onnx)
@@ -128,7 +128,7 @@ while True:
         "timestamp": timestamp,
         }
     model_handler_dict = {
-        "model_onnx": f"{pt_filename.replace('.pt', '.onnx')}",
+        "modelOnnx": f"{pt_filename.replace('.pt', '.onnx')}",
         }
 
     generate_from_template(os.path.join("templates", "function-gpu.yaml.tpl"), os.path.join(nuclio_dir, "function-gpu.yaml"), function_dict)
