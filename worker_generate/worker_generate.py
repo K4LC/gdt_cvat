@@ -4,6 +4,7 @@ import shutil
 import json
 import datetime
 import re
+import traceback
 import xml.etree.ElementTree as ET
 from zoneinfo import ZoneInfo
 from jinja2 import Template
@@ -12,6 +13,14 @@ from ultralytics import YOLO
 print("container start")
 
 r = redis.Redis(host="queue_db", port=6379, db=0)
+
+
+def set_status(task_id, status, **extra):
+    """Redisにタスクの進捗を保存し、backendから参照できるようにする"""
+    payload = {"status": status}
+    for k, v in extra.items():
+        payload[k] = str(v)
+    r.hset(f"task:{task_id}", mapping=payload)
 
 def generate_from_template(template_path, output_path, params):
     with open(template_path, encoding="utf-8") as f:
@@ -82,61 +91,87 @@ while True:
     print(generate_data)
 
     task_id = generate_data["task_id"]
-    modelName = generate_data["modelName"]
-    author = generate_data["author"]
-    svg_path = generate_data["svg_path"]
-    svg_filename = os.path.basename(svg_path)
-    pt_path = generate_data["pt_path"]
-    pt_filename = os.path.basename(pt_path)
-
-    # タイムスタンプ作成
-    timestamp = datetime.datetime.now(datetime.timezone.utc)
-    timestamp = timestamp.astimezone(ZoneInfo("Asia/Tokyo"))
-    timestamp = timestamp.strftime("%Y%m%d%H%M")
-
-    # 元フォルダのパス
     BASE_DIR = "/shared_gen"
     BASE_PATH = os.path.join(BASE_DIR, f"generate_{task_id}")
-    
-    # 保存先フォルダ作成
-    nuclio_path = f"nuclio_{timestamp}_{task_id}"
-    nuclio_dir = os.path.join(BASE_DIR, nuclio_path)
-    os.makedirs(nuclio_dir, exist_ok=True)
 
-    # .ptから.onnxにエクスポート
-    model = YOLO(pt_path)
-    model.export(format="onnx")
-    src_onnx = pt_path.replace(".pt", ".onnx")
-    dst_onnx = f"{nuclio_dir}/{pt_filename.replace('.pt', '.onnx')}"
-    shutil.copy(src_onnx, dst_onnx)
+    try:
+        set_status(task_id, "processing")
 
-    # svgデータ処理
-    svgInfo, svgLabelNames = parse_svg(svg_path)
-    print(svgInfo, svgLabelNames)
+        modelName = generate_data["modelName"]
+        author = generate_data["author"]
+        svg_path = generate_data["svg_path"]
+        svg_filename = os.path.basename(svg_path)
+        pt_path = generate_data["pt_path"]
+        pt_filename = os.path.basename(pt_path)
 
-    # Jinja2でテンプレートからファイル作成
-    function_dict = {
-        "modelName": modelName,
-        "author": author,
-        "timestamp": timestamp,
-        "svgInfo": svgInfo,
-        "svgLabelNames": svgLabelNames,
-        }
-    main_dict = {
-        "modelName": modelName,
-        "author": author,
-        "timestamp": timestamp,
-        }
-    model_handler_dict = {
-        "modelOnnx": f"{pt_filename.replace('.pt', '.onnx')}",
-        }
+        # タイムスタンプ作成
+        timestamp = datetime.datetime.now(datetime.timezone.utc)
+        timestamp = timestamp.astimezone(ZoneInfo("Asia/Tokyo"))
+        timestamp = timestamp.strftime("%Y%m%d%H%M")
 
-    generate_from_template(os.path.join("templates", "function-gpu.yaml.tpl"), os.path.join(nuclio_dir, "function-gpu.yaml"), function_dict)
-    generate_from_template(os.path.join("templates", "function.yaml.tpl"), os.path.join(nuclio_dir, "function.yaml"), function_dict)
-    generate_from_template(os.path.join("templates", "main.py.tpl"), os.path.join(nuclio_dir, "main.py"), main_dict)
-    generate_from_template(os.path.join("templates", "model_handler.py.tpl"), os.path.join(nuclio_dir, "model_handler.py"), model_handler_dict)
+        # 保存先フォルダ作成
+        nuclio_path = f"nuclio_{timestamp}_{task_id}"
+        nuclio_dir = os.path.join(BASE_DIR, nuclio_path)
+        os.makedirs(nuclio_dir, exist_ok=True)
 
-    # backendからの共有用フォルダ削除
-    shutil.rmtree(BASE_PATH)
+        # .ptから.onnxにエクスポート
+        # nms=Trueでエンドツーエンド出力 (1, 300, 4+1+1+kpt*3) に統一する。
+        # これによりv8/v11/yolo26いずれのposeモデルでもmodel_handler側の
+        # 後処理済みフォーマット前提と一致し、キーポイントが崩れなくなる。
+        model = YOLO(pt_path)
+        model.export(format="onnx", nms=True)
+        src_onnx = pt_path.replace(".pt", ".onnx")
+        onnx_filename = pt_filename.replace(".pt", ".onnx")
+        dst_onnx = os.path.join(nuclio_dir, onnx_filename)
+        shutil.copy(src_onnx, dst_onnx)
 
-    # backendに終了通知
+        # svgデータ処理
+        svgInfo, svgLabelNames = parse_svg(svg_path)
+        print(svgInfo, svgLabelNames)
+
+        # Jinja2でテンプレートからファイル作成
+        function_dict = {
+            "modelName": modelName,
+            "author": author,
+            "timestamp": timestamp,
+            "svgInfo": svgInfo,
+            "svgLabelNames": svgLabelNames,
+            }
+        main_dict = {
+            "modelName": modelName,
+            "author": author,
+            "timestamp": timestamp,
+            }
+        model_handler_dict = {
+            "modelOnnx": onnx_filename,
+            }
+
+        generate_from_template(os.path.join("templates", "function-gpu.yaml.tpl"), os.path.join(nuclio_dir, "function-gpu.yaml"), function_dict)
+        generate_from_template(os.path.join("templates", "function.yaml.tpl"), os.path.join(nuclio_dir, "function.yaml"), function_dict)
+        generate_from_template(os.path.join("templates", "main.py.tpl"), os.path.join(nuclio_dir, "main.py"), main_dict)
+        generate_from_template(os.path.join("templates", "model_handler.py.tpl"), os.path.join(nuclio_dir, "model_handler.py"), model_handler_dict)
+
+        # 成果物をZIP化してbackendがダウンロード配信できるようにする
+        zip_base = os.path.join(BASE_DIR, f"result_{task_id}")
+        shutil.make_archive(zip_base, "zip", nuclio_dir)
+        zip_path = zip_base + ".zip"
+
+        # backendからの共有用フォルダ削除
+        shutil.rmtree(BASE_PATH, ignore_errors=True)
+
+        # backendに終了通知
+        set_status(
+            task_id,
+            "done",
+            zip_path=zip_path,
+            filename=f"{nuclio_path}.zip",
+            nuclio_path=nuclio_path,
+        )
+        print(f"task {task_id} done -> {zip_path}")
+
+    except Exception as e:
+        traceback.print_exc()
+        # 失敗してもループを止めず、エラーをbackendに通知する
+        shutil.rmtree(BASE_PATH, ignore_errors=True)
+        set_status(task_id, "error", error=str(e))
+        print(f"task {task_id} failed: {e}")

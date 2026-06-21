@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 import uuid
 import os
 import redis
@@ -16,6 +17,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+r = redis.Redis(host="queue_db", port=6379, db=0)
+
+
+def get_task(task_id: str):
+    """Redisからタスクの進捗状況を取り出してdictで返す"""
+    raw = r.hgetall(f"task:{task_id}")
+    return {k.decode(): v.decode() for k, v in raw.items()}
 
 @app.post("/api/generate")
 async def generate(
@@ -48,8 +57,6 @@ async def generate(
         f.write(await pt.read())
     print("Pt writing complete")
 
-    r = redis.Redis(host="queue_db", port=6379, db=0)
-
     generate_data = {
         "task_id": task_id,
         "modelName": modelName.lower(),
@@ -58,7 +65,35 @@ async def generate(
         "pt_path": pt_path
     }
 
+    # 初期ステータスを登録してからキューに投入する
+    r.hset(f"task:{task_id}", mapping={"status": "queued"})
     r.rpush("generate_queue", json.dumps(generate_data))
     print("Pushed to queue")
 
     return {"generate_id": task_id}
+
+
+@app.get("/api/status/{task_id}")
+def status(task_id: str):
+    task = get_task(task_id)
+    if not task:
+        return JSONResponse({"status": "unknown"}, status_code=404)
+    return task
+
+
+@app.get("/api/download/{task_id}")
+def download(task_id: str):
+    task = get_task(task_id)
+    if not task:
+        return JSONResponse({"detail": "task not found"}, status_code=404)
+    if task.get("status") != "done":
+        return JSONResponse(
+            {"detail": "not ready", "status": task.get("status")}, status_code=409
+        )
+
+    zip_path = task.get("zip_path")
+    if not zip_path or not os.path.exists(zip_path):
+        return JSONResponse({"detail": "result file missing"}, status_code=410)
+
+    filename = task.get("filename", "result.zip")
+    return FileResponse(zip_path, media_type="application/zip", filename=filename)

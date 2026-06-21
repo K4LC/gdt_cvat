@@ -64,54 +64,64 @@ class ModelHandler:
         return im, r, (dw, dh)
 
     def _infer(self, inputs: np.ndarray):
-        try:
-            img = cv2.cvtColor(inputs, cv2.COLOR_BGR2RGB)
-            image = img.copy()
-            image, ratio, dwdh = self.letterbox(image, auto=False)
+        img = cv2.cvtColor(inputs, cv2.COLOR_BGR2RGB)
+        image = img.copy()
+        image, ratio, dwdh = self.letterbox(image, auto=False)
 
-            image = image.transpose((2, 0, 1))
-            image = np.expand_dims(image, 0)
-            image = np.ascontiguousarray(image)
+        image = image.transpose((2, 0, 1))
+        image = np.expand_dims(image, 0)
+        image = np.ascontiguousarray(image)
 
-            im = image.astype(np.float32) / 255.0
+        im = image.astype(np.float32) / 255.0
 
-            inp = {self.input_details[0]: im}
-            detections = self.model.run(self.output_details, inp)[0]  # (1,300,57)
-            detections = detections[0]  # remove batch
+        inp = {self.input_details[0]: im}
+        outputs = self.model.run(self.output_details, inp)
+        detections = outputs[0]  # 期待形状 (1, N, 4+1+1+kpt*3)
 
-            results = []
+        # 初回のみ実際の出力形状をログに出して形式の食い違いを確認できるようにする
+        if not getattr(self, "_shape_logged", False):
+            print("ONNX outputs:", [o.shape for o in outputs])
+            self._shape_logged = True
 
-            for det in detections:
-                bbox = det[:4]
-                obj_conf = det[4]
-                cls_id = int(det[5])
-                kpts = det[6:].reshape(-1, 3)
+        detections = detections[0]  # remove batch
 
-                if obj_conf < 0.25:
-                    continue
+        # nms=Trueエクスポート時の最低列数チェック（box4+conf1+cls1+kpt3*N）
+        if detections.ndim != 2 or detections.shape[1] < 7:
+            raise ValueError(
+                f"unexpected ONNX output shape {outputs[0].shape}. "
+                "nms=True でエクスポートされた (1, N, 6+kpt*3) 形式を想定しています。"
+            )
 
-                # bbox補正
-                bbox -= np.array(dwdh * 2)
-                bbox /= ratio
+        results = []
 
-                # keypoints補正
-                kpts[:, :2] -= np.array(dwdh)
-                kpts[:, :2] /= ratio
+        for det in detections:
+            bbox = det[:4]
+            obj_conf = det[4]
+            cls_id = int(det[5])
+            kpts = det[6:].reshape(-1, 3)
 
-                results.append(
-                    {
-                        "bbox": bbox,
-                        "bbox_score": float(obj_conf),
-                        "class_id": cls_id,
-                        "keypoints": kpts[:, :2],
-                        "keypoint_scores": kpts[:, 2],
-                    }
-                )
+            if obj_conf < 0.25:
+                continue
 
-            return results
+            # bbox補正
+            bbox -= np.array(dwdh * 2)
+            bbox /= ratio
 
-        except Exception as e:
-            print(e)
+            # keypoints補正
+            kpts[:, :2] -= np.array(dwdh)
+            kpts[:, :2] /= ratio
+
+            results.append(
+                {
+                    "bbox": bbox,
+                    "bbox_score": float(obj_conf),
+                    "class_id": cls_id,
+                    "keypoints": kpts[:, :2],
+                    "keypoint_scores": kpts[:, 2],
+                }
+            )
+
+        return results
 
     def infer(self, image, threshold):
         image = np.array(image)
